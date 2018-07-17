@@ -70,10 +70,14 @@ function main()
           --print(scr.filename.." deleted. Unloading..")
         else
           local scr = find_script_by_path(value)
-          print('Reloading '..scr.filename)
-          wait(autoreloaddelay)
-          scr:reload()
-          autoreload[key] = lfs.attributes(value, "modification")
+          if scr then
+            print('Reloading '..scr.filename)
+            wait(autoreloaddelay)
+            scr:reload()
+            autoreload[key] = lfs.attributes(value, "modification")
+					else
+						script.load(value)
+          end
         end
       end
     end
