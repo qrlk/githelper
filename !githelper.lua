@@ -1,52 +1,127 @@
+--Больше скриптов от автора можно найти в группе ВК: http://vk.com/qrlk.mods
 --Больше скриптов от автора можно найти на сайте: http://www.rubbishman.ru/samp
+--[[
+Script that loads all .lua and .luac MoonLoader scripts from "scripts" folder and it's subfolders. Add "$" to subfolder name to ignore it.
+Загружает все lua и luac скрипты из папки scripts и вложенных в неё. Добавьте в название папки $, чтобы игнорировать её.
+]]
+
 --------------------------------------------------------------------------------
 -------------------------------------META---------------------------------------
 --------------------------------------------------------------------------------
-script_author("rubbishman")
-script_dependencies()
-script_description("Умный менеджер скриптов")
-script_moonloader()
-script_name("moonmarket")
-script_properties()
-script_url()
-script_version('dev')
-script_properties()
+--script_name("moonmarket")
+--script_description("Умный менеджер скриптов")
+script_name("githelper")
+script_description([[Загружает все lua и luac скрипты из папки scripts и вложенных в неё. Добавьте в название папки $, чтобы игнорировать её. Script that loads all .lua and .luac MoonLoader scripts from "scripts" folder and it's subfolders. Add "$" to subfolder name to ignore it.]])
+script_author("qrlk")
+script_version('1.0')
+script_dependencies("lfs")
+script_url("https://gitlab.com/qrlk/githelper.lua")
+-----------------------------------CONFIG---------------------------------------
+--Заменяет собой reload_all.lua. Ctrl+R - перезагрузить все скрипты.
+reload_all = false
+--Будет перезагружать скрипты из папки scripts при их изменении (полезно для dev).
+--ML-AutoReload не всегда будет перезагружать скрипты из кастомной папки.
+AutoReload = true
+--Полностью заменяет ML-AutoReload
+AutoReloadAll = false
+--задержка AutoReload
+autoreloaddelay = 500
 -------------------------------------VAR----------------------------------------
+--githelper
+local lfs = require 'lfs'
+prefix = ""
+scriptlist = {}
+autoreload = {}
+--moonmarket
+--[[
 local imgui = require 'imgui'
+local inspect = require 'inspect'
 local key = require 'vkeys'
 local selected = 1
 local encoding = require 'encoding' -- загружаем библиотеку
 encoding.default = 'CP1251' -- указываем кодировку по умолчанию, она должна совпадать с кодировкой файла. CP1251 - это Windows-1251
 u8 = encoding.UTF8 -- и создаём короткий псевдоним для кодировщика UTF-8
-local lfs = require 'lfs'
-local inspect = require 'inspect'
-prefix = ""
-scriptlist = {}
-autoreload = {}
-autoreloaddelay = 500
+]]
+-------------------------------------MAIN---------------------------------------
+function main()
+  if not isSampLoaded() then return end
+  if reload_all then lua_thread.create(reload_all) end
+  dir(getWorkingDirectory().."\\scripts\\")
+  for key, value in pairs(scriptlist) do
+    print('Загружаю '..value)
+    script.load(value)
+    autoreload[key] = lfs.attributes(value, "modification")
+  end
+  if AutoReloadAll then
+    for file in lfs.dir(getWorkingDirectory()) do
+      if lfs.attributes(file, "mode") == "file" then
+        if file:find(".lua", 1, true) or file:find(".luac", 1, true) then
+          table.insert(scriptlist, lfs.currentdir().."\\"..file)
+          autoreload[#scriptlist] = lfs.attributes(lfs.currentdir().."\\"..file, "modification")
+        end
+      end
+    end
+  end
+  while true and AutoReload do
+    wait(0)
+    for key, value in pairs(scriptlist) do
+      if lfs.attributes(value, "modification") ~= autoreload[key] then
+        if not doesFileExist(value) then
+          --print(scr.filename.." deleted. Unloading..")
+        else
+          local scr = find_script_by_path(value)
+          print('Reloading '..scr.filename)
+          wait(autoreloaddelay)
+          scr:reload()
+          autoreload[key] = lfs.attributes(value, "modification")
+        end
+      end
+    end
+  end
+  --[[if wasKeyPressed(key.VK_MENU) and wasKeyPressed(key.VK_M) then
+      main_window_state.v = not main_window_state.v
+    end
+    imgui.Process = main_window_state.v]]
+end
 -----------------------------------HELPERS--------------------------------------
---эта функция исследует папку и все вложенные в неё папки, достаёт пути к скриптам lua и luac и заносит в таблицу scriptlist
 function dir(path)
   lfs.chdir(path)
   for file in lfs.dir(path) do
-    if file ~= "." and file ~= ".."then
+    if file ~= "." and file ~= ".." then
       if lfs.attributes(file, "mode") == "file" then
         --print(prefix..file)
         if file:find(".lua", 1, true) or file:find(".luac", 1, true) then
           table.insert(scriptlist, lfs.currentdir().."\\"..file)
         end
-      elseif lfs.attributes(file, "mode") == "directory" and file:find('net') == nil then
+      elseif lfs.attributes(file, "mode") == "directory" and file:find('$', 1, true) == nil then
         --print(prefix..file, " containing:")
-        --prefix = prefix.."    "
+        prefix = prefix.."    "
         dir(lfs.currentdir().."\\"..file)
       end
     end
   end
   lfs.chdir("..")
-  --prefix = string.sub(prefix, 1, string.len(prefix)-4)
+  prefix = string.sub(prefix, 1, string.len(prefix) - 4)
+end
+function find_script_by_path(path)
+  for _, s in ipairs(script.list()) do
+    if s.path == path then
+      return s
+    end
+  end
+  return nil
+end
+function reload_all()
+  while true do
+    wait(40)
+    if isKeyDown(17) and isKeyDown(82) then -- CTRL+R
+      while isKeyDown(17) and isKeyDown(82) do wait(80) end
+      reloadScripts()
+    end
+  end
 end
 -------------------------------------IMGUI--------------------------------------
---style
+--[=====[
 function apply_custom_style()
   imgui.SwitchContext()
   local style = imgui.GetStyle()
@@ -169,34 +244,4 @@ function imgui.OnDrawFrame()
     imgui.End()
   end
 end
--------------------------------------MAIN---------------------------------------
-function main()
-  if not isSampfuncsLoaded() or not isSampLoaded() then return end
-  while not isSampAvailable() do wait(100) end
-  dir(getWorkingDirectory().."\\scripts\\")
-  for key, value in pairs(scriptlist) do
-    print('Загружаю '..value)
-    script.load(value)
-    autoreload[key] = lfs.attributes(value, "modification")
-  end
-  while true do
-    wait(0)
-    if wasKeyPressed(key.VK_MENU) and wasKeyPressed(key.VK_M) then
-      main_window_state.v = not main_window_state.v
-    end
-    imgui.Process = main_window_state.v
-  end
-  --перезапуск скриптов работает криво, исправить!
-  --[[while true do
-    wait(0)
-    for key, value in pairs(scriptlist) do
-      if lfs.attributes(value, "modification") ~= autoreload[key] then
-				local scr = find_script_by_path(value)
-				--print('Reloading {346cb2}'..scr.name)
-				wait(autoreloaddelay)
-        scr:reload()
-        autoreload[key] = lfs.attributes(value, "modification")
-      end
-    end
-  end]]
-end
+--]=====]
