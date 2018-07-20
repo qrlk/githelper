@@ -1,52 +1,50 @@
 --Больше скриптов от автора можно найти в группе ВК: http://vk.com/qrlk.mods
 --Больше скриптов от автора можно найти на сайте: http://www.rubbishman.ru/samp
---[[
-Script that loads all .lua and .luac MoonLoader scripts from "scripts" folder and it's subfolders. Add "$" to subfolder name to ignore it.
-Загружает все lua и luac скрипты из папки scripts и вложенных в неё. Добавьте в название папки $, чтобы игнорировать её.
-]]
-
 --------------------------------------------------------------------------------
 -------------------------------------META---------------------------------------
 --------------------------------------------------------------------------------
---script_name("moonmarket")
---script_description("Умный менеджер скриптов")
 script_name("githelper")
 script_description([[Загружает все lua и luac скрипты из папки scripts и вложенных в неё. Добавьте в название папки $, чтобы игнорировать её. Script that loads all .lua and .luac MoonLoader scripts from "scripts" folder and it's subfolders. Add "$" to subfolder name to ignore it.]])
 script_author("qrlk")
-script_version('1.0')
+script_version('1.2')
 script_dependencies("lfs")
 script_url("https://gitlab.com/qrlk/githelper.lua")
+script_properties('work-in-pause')
+
+require "lib.moonloader"
 -----------------------------------CONFIG---------------------------------------
 --Заменяет собой reload_all.lua. Ctrl+R - перезагрузить все скрипты.
-reload_all = false
+reload_all = true
+--Заменяет собой SF Integration
+SF_integration = true
 --Будет перезагружать скрипты из папки scripts при их изменении (полезно для dev).
 --ML-AutoReload не всегда будет перезагружать скрипты из кастомной папки.
 AutoReload = true
 --Полностью заменяет ML-AutoReload
-AutoReloadAll = false
+AutoReloadAll = true
 --задержка AutoReload
-autoreloaddelay = 500
+autoreloaddelay = 1000
 -------------------------------------VAR----------------------------------------
---githelper
 local lfs = require 'lfs'
 prefix = ""
 scriptlist = {}
 autoreload = {}
---moonmarket
---[[
-local imgui = require 'imgui'
-local inspect = require 'inspect'
-local key = require 'vkeys'
-local selected = 1
-local encoding = require 'encoding' -- загружаем библиотеку
-encoding.default = 'CP1251' -- указываем кодировку по умолчанию, она должна совпадать с кодировкой файла. CP1251 - это Windows-1251
-u8 = encoding.UTF8 -- и создаём короткий псевдоним для кодировщика UTF-8
-]]
+if SF_integration then
+  require "lib.sampfuncs"
+  logDebugMessages = false
+  COLOR_MSG = 0xC0C0C0
+  COLOR_SCRIPTMSG = 0x7DD156
+  COLOR_SENDER = 0xE0E0E0
+end
 -------------------------------------MAIN---------------------------------------
 function main()
   if not isSampLoaded() then return end
   if reload_all then lua_thread.create(reload_all) end
   dir(getWorkingDirectory().."\\scripts\\")
+  if SF_integration and isSampfuncsLoaded() then
+    sampfuncsRegisterConsoleCommand("lua", do_lua)
+    sampfuncsRegisterConsoleCommand(">>", do_lua)
+  end
   for key, value in pairs(scriptlist) do
     print('Загружаю '..value)
     script.load(value)
@@ -75,17 +73,14 @@ function main()
             wait(autoreloaddelay)
             scr:reload()
             autoreload[key] = lfs.attributes(value, "modification")
-					else
-						script.load(value)
+          else
+            script.load(value)
           end
         end
       end
     end
   end
-  --[[if wasKeyPressed(key.VK_MENU) and wasKeyPressed(key.VK_M) then
-      main_window_state.v = not main_window_state.v
-    end
-    imgui.Process = main_window_state.v]]
+  wait(-1)
 end
 -----------------------------------HELPERS--------------------------------------
 function dir(path)
@@ -124,128 +119,70 @@ function reload_all()
     end
   end
 end
--------------------------------------IMGUI--------------------------------------
---[=====[
-function apply_custom_style()
-  imgui.SwitchContext()
-  local style = imgui.GetStyle()
-  local colors = style.Colors
-  local clr = imgui.Col
-  local ImVec4 = imgui.ImVec4
-  style.WindowRounding = 2.0
-  style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
-  style.ChildWindowRounding = 2.0
-  style.FrameRounding = 2.0
-  style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
-  style.ScrollbarSize = 13.0
-  style.ScrollbarRounding = 0
-  style.GrabMinSize = 8.0
-  style.GrabRounding = 1.0
-  colors[clr.Text] = ImVec4(1.00, 1.00, 1.00, 1.00)
-  colors[clr.TextDisabled] = ImVec4(0.50, 0.50, 0.50, 1.00)
-  colors[clr.WindowBg] = ImVec4(0.06, 0.06, 0.06, 0.94)
-  colors[clr.ChildWindowBg] = ImVec4(1.00, 1.00, 1.00, 0.00)
-  colors[clr.PopupBg] = ImVec4(0.08, 0.08, 0.08, 0.94)
-  colors[clr.ComboBg] = colors[clr.PopupBg]
-  colors[clr.Border] = ImVec4(0.43, 0.43, 0.50, 0.50)
-  colors[clr.BorderShadow] = ImVec4(0.00, 0.00, 0.00, 0.00)
-  colors[clr.FrameBg] = ImVec4(0.16, 0.29, 0.48, 0.54)
-  colors[clr.FrameBgHovered] = ImVec4(0.26, 0.59, 0.98, 0.40)
-  colors[clr.FrameBgActive] = ImVec4(0.26, 0.59, 0.98, 0.67)
-  colors[clr.TitleBg] = ImVec4(0.04, 0.04, 0.04, 1.00)
-  colors[clr.TitleBgActive] = ImVec4(0.16, 0.29, 0.48, 1.00)
-  colors[clr.TitleBgCollapsed] = ImVec4(0.00, 0.00, 0.00, 0.51)
-  colors[clr.MenuBarBg] = ImVec4(0.14, 0.14, 0.14, 1.00)
-  colors[clr.ScrollbarBg] = ImVec4(0.02, 0.02, 0.02, 0.53)
-  colors[clr.ScrollbarGrab] = ImVec4(0.31, 0.31, 0.31, 1.00)
-  colors[clr.ScrollbarGrabHovered] = ImVec4(0.41, 0.41, 0.41, 1.00)
-  colors[clr.ScrollbarGrabActive] = ImVec4(0.51, 0.51, 0.51, 1.00)
-  colors[clr.CheckMark] = ImVec4(0.26, 0.59, 0.98, 1.00)
-  colors[clr.SliderGrab] = ImVec4(0.24, 0.52, 0.88, 1.00)
-  colors[clr.SliderGrabActive] = ImVec4(0.26, 0.59, 0.98, 1.00)
-  colors[clr.Button] = ImVec4(0.26, 0.59, 0.98, 0.40)
-  colors[clr.ButtonHovered] = ImVec4(0.26, 0.59, 0.98, 1.00)
-  colors[clr.ButtonActive] = ImVec4(0.06, 0.53, 0.98, 1.00)
-  colors[clr.Header] = ImVec4(0.26, 0.59, 0.98, 0.31)
-  colors[clr.HeaderHovered] = ImVec4(0.26, 0.59, 0.98, 0.80)
-  colors[clr.HeaderActive] = ImVec4(0.26, 0.59, 0.98, 1.00)
-  colors[clr.Separator] = colors[clr.Border]
-  colors[clr.SeparatorHovered] = ImVec4(0.26, 0.59, 0.98, 0.78)
-  colors[clr.SeparatorActive] = ImVec4(0.26, 0.59, 0.98, 1.00)
-  colors[clr.ResizeGrip] = ImVec4(0.26, 0.59, 0.98, 0.25)
-  colors[clr.ResizeGripHovered] = ImVec4(0.26, 0.59, 0.98, 0.67)
-  colors[clr.ResizeGripActive] = ImVec4(0.26, 0.59, 0.98, 0.95)
-  colors[clr.CloseButton] = ImVec4(0.41, 0.41, 0.41, 0.50)
-  colors[clr.CloseButtonHovered] = ImVec4(0.98, 0.39, 0.36, 1.00)
-  colors[clr.CloseButtonActive] = ImVec4(0.98, 0.39, 0.36, 1.00)
-  colors[clr.PlotLines] = ImVec4(0.61, 0.61, 0.61, 1.00)
-  colors[clr.PlotLinesHovered] = ImVec4(1.00, 0.43, 0.35, 1.00)
-  colors[clr.PlotHistogram] = ImVec4(0.90, 0.70, 0.00, 1.00)
-  colors[clr.PlotHistogramHovered] = ImVec4(1.00, 0.60, 0.00, 1.00)
-  colors[clr.TextSelectedBg] = ImVec4(0.26, 0.59, 0.98, 0.35)
-  colors[clr.ModalWindowDarkening] = ImVec4(0.80, 0.80, 0.80, 0.35)
+---------------------------------SF INTEGRATION---------------------------------
+--author: fyp
+function log_message(msg, tagtext, tagcolor, sender)
+  local str = string.format("{%06X}[ML] ", COLOR_MSG)
+  if tagtext then
+    str = str .. string.format("{%06X}(%s) ", tagcolor, tagtext)
+  end
+  if sender then
+    str = str .. string.format("{%06X}%s: ", COLOR_SENDER, sender.name)
+  end
+  sampfuncsLog(string.format("%s{%06X}%s", str, COLOR_MSG, msg))
 end
-apply_custom_style()
---main_window
-local main_window_state = imgui.ImBool(false)
-function imgui.OnDrawFrame()
-  if main_window_state.v then
-    imgui.SetNextWindowSize(imgui.ImVec2(500, 440))
-    imgui.Begin("MoonMarket", main_window_state, imgui.WindowFlags.NoCollapse)
-    imgui.BeginChild("left pane", imgui.ImVec2(150, 0), true)
-    for i = 1, #script.list() do
-      if imgui.Selectable(u8:encode(string.format("%s", script.list()[i]["filename"])), selected == i) then
-        selected = i
-      end
-    end
-    imgui.EndChild()
-    imgui.SameLine()
-    if script.list()[selected] ~= nil then
-      imgui.BeginGroup()
-      imgui.BeginChild("item view", imgui.ImVec2(0, - imgui.GetItemsLineHeightWithSpacing()))
 
-      imgui.Text(string.format("%s", script.list()[selected]["name"]))
-      imgui.Separator()
-      imgui.TextWrapped(u8:encode(string.format([[
-		Authors: %s
-		Dead: %s
-		Description: %s
-		Directory: %s
-		Filename: %s
-		Frozen: %s
-		Name: %s
-		Path: %s
-		Version: %s
-		Version number: %s
-		]],
-        inspect(script.list()[selected]["authors"]),
-        script.list()[selected]["dead"],
-        script.list()[selected]["description"],
-        script.list()[selected]["directory"],
-        script.list()[selected]["filename"],
-        script.list()[selected]["frozen"],
-        script.list()[selected]["name"],
-        script.list()[selected]["path"],
-        script.list()[selected]["version"],
-        script.list()[selected]["version_num"]
-      )))
-      imgui.EndChild()
-      imgui.BeginChild("buttons")
-      if imgui.Button("Unload") then
-        script.list()[selected]:unload()
-      end
-      imgui.SameLine();
-      if imgui.Button("Reload") then
-        script.list()[selected]:reload()
-      end
-      imgui.SameLine();
-      if imgui.Button("Load") then
-        script.list()[selected]:load()
-      end
-      imgui.EndChild()
-      imgui.EndGroup()
+
+--- Callbacks
+function do_lua(code)
+  if code:sub(1, 1) == '=' then
+    code = "print(" .. code:sub(2, - 1) .. ")"
+  end
+  local func, err = load(code)
+  if func then
+    local result, err = pcall(func)
+    if not result then
+      onSystemMessage(err, TAG.TYPE_ERROR, thisScript())
     end
-    imgui.End()
+  else
+    onSystemMessage(err, TAG.TYPE_ERROR, thisScript())
   end
 end
---]=====]
+
+
+--- Events
+function onSystemMessage(msg, type, sender)
+  if SF_integration and isSampfuncsLoaded() and isOpcodesAvailable() and (type ~= TAG.TYPE_DEBUG or logDebugMessages) then
+    local tagtxt = get_tag_text(type)
+    local tagclr = get_tag_color(type) or COLOR_MSG
+    log_message(msg, tagtxt, tagclr, sender)
+  end
+end
+
+function onScriptMessage(msg, sender)
+  if SF_integration and isSampfuncsLoaded() and isOpcodesAvailable() then
+    log_message(msg, "script", COLOR_SCRIPTMSG, sender)
+  end
+end
+
+
+--- Functions
+local tags = {
+  [TAG.TYPE_INFO] = {"info", 0xA9EFF5},
+  [TAG.TYPE_DEBUG] = {"debug", 0xAFA9F5},
+  [TAG.TYPE_ERROR] = {"error", 0xFF7070},
+  [TAG.TYPE_WARN] = {"warn", 0xF5C28E},
+  [TAG.TYPE_SYSTEM] = {"system", 0xFA9746},
+  [TAG.TYPE_FATAL] = {"fatal", 0x040404},
+  [TAG.TYPE_EXCEPTION] = {"exception", 0xF5A9A9}
+}
+
+function get_tag_text(n)
+  local tag = tags[n]
+  return tag ~= nil and tag[1] or nil
+end
+
+function get_tag_color(n)
+  local tag = tags[n]
+  return tag ~= nil and tag[2] or nil
+end
