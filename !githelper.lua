@@ -62,19 +62,26 @@ function main()
   end
   while true and AutoReload do
     wait(0)
-    for key, value in pairs(scriptlist) do
-      if lfs.attributes(value, "modification") ~= autoreload[key] then
-        if not doesFileExist(value) then
-          --print(scr.filename.." deleted. Unloading..")
-        else
-          local scr = find_script_by_path(value)
-          if scr then
-            print('Reloading '..scr.filename)
-            wait(autoreloaddelay)
-            scr:reload()
-            autoreload[key] = lfs.attributes(value, "modification")
+    if isGamePaused() == true then
+      wait(500)
+    end
+    if isGamePaused() == false then
+      for key, value in pairs(scriptlist) do
+        if lfs.attributes(value, "modification") ~= autoreload[key] then
+          if not doesFileExist(value) then
+            --print(scr.filename.." deleted. Unloading..")
           else
-            script.load(value)
+            local scr = find_script_by_path(value)
+            if scr then
+              wait(100)
+              print('Reloading '..scr.filename)
+              wait(autoreloaddelay)
+              scr:reload()
+              autoreload[key] = lfs.attributes(value, "modification")
+            else
+              script.load(value)
+              autoreload[key] = lfs.attributes(value, "modification")
+            end
           end
         end
       end
