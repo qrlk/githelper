@@ -92,7 +92,7 @@ function dir(path)
         if file:find(".lua", 1, true) or file:find(".luac", 1, true) then
           table.insert(scriptlist, lfs.currentdir().."\\"..file)
         end
-      elseif lfs.attributes(file, "mode") == "directory" and file:find('$', 1, true) == nil then
+      elseif lfs.attributes(file, "mode") == "directory" and file:find('$', 1, true) == nil and file:find('compil', 1, true) == nil and file:find('lib', 1, true) == nil then
         --print(prefix..file, " containing:")
         prefix = prefix.."    "
         dir(lfs.currentdir().."\\"..file)
